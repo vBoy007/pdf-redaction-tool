@@ -380,6 +380,9 @@ export const PDFViewer: React.FC = () => {
             offsetY: y - text.y,
           });
           setSelectedAnnotation({ id: text.id, type: 'text' });
+          // Затвори redaction panel
+          setSelectedRedactionId(null);
+          setShowTemplates(false);
           return;
         }
       }
@@ -403,6 +406,9 @@ export const PDFViewer: React.FC = () => {
             offsetY: y - img.y,
           });
           setSelectedAnnotation({ id: img.id, type: 'image' });
+          // Затвори redaction panel
+          setSelectedRedactionId(null);
+          setShowTemplates(false);
           return;
         }
       }
