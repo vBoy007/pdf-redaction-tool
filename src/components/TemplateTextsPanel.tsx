@@ -25,7 +25,7 @@ export const TemplateTextsPanel: React.FC<TemplateTextsPanelProps> = ({ onSelect
   ];
 
   return (
-    <div className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
+    <div className="template-panel absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
       style={{
         top: '80px',
         left: '20px',

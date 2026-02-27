@@ -15,7 +15,7 @@ export const TextFormatPanel: React.FC<TextFormatPanelProps> = ({ textId, onClos
   const fontSizes = [10, 12, 14, 16, 18, 20, 24, 28, 32];
 
   return (
-    <div className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
+    <div className="text-format-panel absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
       style={{
         top: '80px',
         right: '20px',

@@ -69,6 +69,37 @@ export const PDFViewer: React.FC = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedRedactionId, setSelectedRedactionId] = useState<string | null>(null);
 
+  // Click outside handler за затваряне на всички панели
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check ако click-ът е върху някой от панелите или overlay canvas
+      const isClickOnPanel = target.closest('.text-format-panel') || 
+                            target.closest('.redaction-settings-panel') ||
+                            target.closest('.template-panel') ||
+                            target.closest('.inline-text-editor');
+      
+      const isClickOnCanvas = target.closest('canvas');
+      
+      // Ако click-ът НЕ е на canvas или панел -> затвори всички панели
+      if (!isClickOnPanel && !isClickOnCanvas) {
+        setSelectedAnnotation(null);
+        setSelectedRedactionId(null);
+        setShowTemplates(false);
+        setEditingText(null);
+      }
+    };
+
+    // Add listener
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Render PDF page to background canvas
   useEffect(() => {
     if (!file || !canvasRef.current) return;

@@ -25,7 +25,7 @@ export const RedactionSettingsPanel: React.FC<RedactionSettingsPanelProps> = ({
   ];
 
   return (
-    <div className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
+    <div className="redaction-settings-panel absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
       style={{
         top: '80px',
         right: '20px',
