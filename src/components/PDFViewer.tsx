@@ -74,16 +74,15 @@ export const PDFViewer: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       
-      // Check ако click-ът е върху някой от панелите или overlay canvas
+      // Check ако click-ът е върху някой от панелите
       const isClickOnPanel = target.closest('.text-format-panel') || 
                             target.closest('.redaction-settings-panel') ||
                             target.closest('.template-panel') ||
                             target.closest('.inline-text-editor');
       
-      const isClickOnCanvas = target.closest('canvas');
-      
-      // Ако click-ът НЕ е на canvas или панел -> затвори всички панели
-      if (!isClickOnPanel && !isClickOnCanvas) {
+      // Ако click-ът НЕ е на панел -> затвори всички панели
+      // Canvas clicks ще се обработват от handleMouseDown
+      if (!isClickOnPanel) {
         setSelectedAnnotation(null);
         setSelectedRedactionId(null);
         setShowTemplates(false);
