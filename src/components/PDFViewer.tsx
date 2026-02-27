@@ -69,33 +69,21 @@ export const PDFViewer: React.FC = () => {
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedRedactionId, setSelectedRedactionId] = useState<string | null>(null);
 
-  // Click outside handler за затваряне на всички панели
+  // Global click handler - затваря панелите при click навсякъде
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Check ако click-ът е върху някой от панелите
-      const isClickOnPanel = target.closest('.text-format-panel') || 
-                            target.closest('.redaction-settings-panel') ||
-                            target.closest('.template-panel') ||
-                            target.closest('.inline-text-editor');
-      
-      // Ако click-ът НЕ е на панел -> затвори всички панели
-      // Canvas clicks ще се обработват от handleMouseDown
-      if (!isClickOnPanel) {
-        setSelectedAnnotation(null);
-        setSelectedRedactionId(null);
-        setShowTemplates(false);
-        setEditingText(null);
-      }
+    const handleGlobalClick = () => {
+      // Затвори всички панели
+      setSelectedAnnotation(null);
+      setSelectedRedactionId(null);
+      setShowTemplates(false);
+      setEditingText(null);
     };
 
-    // Add listener
-    document.addEventListener('mousedown', handleClickOutside);
+    // Listen на document level
+    document.addEventListener('click', handleGlobalClick);
     
-    // Cleanup
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
 
@@ -327,7 +315,8 @@ export const PDFViewer: React.FC = () => {
           y <= redaction.y + redaction.height + hitPadding
         ) {
           console.log('Hit redaction box:', redaction.id);
-          // Затвори ВСИЧКИ други панели
+          // Затвори ВСИЧКИ други панели и отвори този
+          e.stopPropagation(); // Спри global handler
           setSelectedRedactionId(redaction.id);
           setSelectedAnnotation(null);
           setShowTemplates(false);
@@ -437,12 +426,10 @@ export const PDFViewer: React.FC = () => {
         }
       }
 
-      // Deselect if clicking on empty space
-      setSelectedAnnotation(null);
-
       // Redaction tool (само ако нищо друго не е hit-нато)
       if (currentTool === 'redact') {
         console.log('Starting redaction box');
+        e.stopPropagation(); // Не затваряй панелите при drag
         setDragState({
           isDragging: true,
           startPoint: { x, y },
@@ -451,8 +438,9 @@ export const PDFViewer: React.FC = () => {
           selectedItemType: null,
         });
       }
+      // Ако не hit-неш нищо, global handler ще затвори панелите
     },
-    [currentTool, currentPage, textAnnotations, imageAnnotations]
+    [currentTool, currentPage, textAnnotations, imageAnnotations, redactions]
   );
 
   const handleMouseMove = useCallback(

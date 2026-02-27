@@ -25,7 +25,10 @@ export const TemplateTextsPanel: React.FC<TemplateTextsPanelProps> = ({ onSelect
   ];
 
   return (
-    <div className="template-panel absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
+    <div 
+      className="template-panel absolute bg-white border border-gray-300 rounded-lg shadow-lg p-3 z-50"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       style={{
         top: '80px',
         left: '20px',
