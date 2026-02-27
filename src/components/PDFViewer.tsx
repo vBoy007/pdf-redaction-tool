@@ -142,6 +142,23 @@ export const PDFViewer: React.FC = () => {
       ctx.strokeStyle = isSelected ? '#FF6B00' : '#FF0000';
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.strokeRect(x, y, width, height);
+      
+      // Hint text ако е selected
+      if (isSelected) {
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#666666';
+        const hintText = '💡 Click за цвят и настройки';
+        const hintY = y + height + 18; // 18px под box-а
+        
+        // Background за по-добра четимост
+        const textMetrics = ctx.measureText(hintText);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(x - 2, hintY - 12, textMetrics.width + 4, 16);
+        
+        // Hint text
+        ctx.fillStyle = '#666666';
+        ctx.fillText(hintText, x, hintY);
+      }
     });
 
     // Draw text annotations
@@ -173,11 +190,30 @@ export const PDFViewer: React.FC = () => {
       // Draw selection box around all lines
       const totalHeight = lines.length * lineHeight;
       const isBeingDragged = draggingAnnotation?.id === t.id && draggingAnnotation?.type === 'text';
+      const isSelected = selectedAnnotation?.id === t.id && selectedAnnotation?.type === 'text';
+      
       ctx.strokeStyle = isBeingDragged ? '#FF6B00' : '#0000FF';
       ctx.lineWidth = isBeingDragged ? 3 : 1;
       ctx.setLineDash([3, 3]);
       ctx.strokeRect(x - 2, y - 2, maxWidth + 4, totalHeight + 4);
       ctx.setLineDash([]);
+      
+      // Hint text ако е selected (и не е в edit mode)
+      if (isSelected && !editingText) {
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#666666';
+        const hintText = '💡 Click за форматиране';
+        const hintY = y + totalHeight + 18; // 18px под text-а
+        
+        // Background за по-добра четимост
+        const textMetrics = ctx.measureText(hintText);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(x - 2, hintY - 12, textMetrics.width + 4, 16);
+        
+        // Hint text
+        ctx.fillStyle = '#666666';
+        ctx.fillText(hintText, x, hintY);
+      }
     });
 
     // Draw image annotations
