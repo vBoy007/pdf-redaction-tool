@@ -143,22 +143,25 @@ export const PDFViewer: React.FC = () => {
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.strokeRect(x, y, width, height);
       
-      // Hint text ако е selected
-      if (isSelected) {
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#666666';
-        const hintText = '💡 Click за цвят и настройки';
-        const hintY = y + height + 18; // 18px под box-а
-        
-        // Background за по-добра четимост
-        const textMetrics = ctx.measureText(hintText);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillRect(x - 2, hintY - 12, textMetrics.width + 4, 16);
-        
-        // Hint text
-        ctx.fillStyle = '#666666';
-        ctx.fillText(hintText, x, hintY);
-      }
+      // Hint text - ВИНАГИ показан (не само когато е selected)
+      // Това помага на потребителя да разбере че може да click-не
+      ctx.save();
+      
+      const hintText = '💡 Настройки';
+      ctx.font = '11px Arial';
+      const textMetrics = ctx.measureText(hintText);
+      const hintX = x + (width / 2) - (textMetrics.width / 2); // Центриран
+      const hintY = y + height + 16; // 16px под box-а
+      
+      // Semi-transparent background
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fillRect(hintX - 3, hintY - 11, textMetrics.width + 6, 14);
+      
+      // Hint text - оранжев ако selected, сив ако не
+      ctx.fillStyle = isSelected ? '#FF6B00' : '#666666';
+      ctx.fillText(hintText, hintX, hintY);
+      
+      ctx.restore();
     });
 
     // Draw text annotations
@@ -198,21 +201,25 @@ export const PDFViewer: React.FC = () => {
       ctx.strokeRect(x - 2, y - 2, maxWidth + 4, totalHeight + 4);
       ctx.setLineDash([]);
       
-      // Hint text ако е selected (и не е в edit mode)
-      if (isSelected && !editingText) {
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#666666';
-        const hintText = '💡 Click за форматиране';
-        const hintY = y + totalHeight + 18; // 18px под text-а
+      // Hint text - ВИНАГИ показан (освен ако не е в edit mode)
+      if (!editingText || editingText.id !== t.id) {
+        ctx.save();
         
-        // Background за по-добра четимост
+        const hintText = '💡 Формат';
+        ctx.font = '11px Arial';
         const textMetrics = ctx.measureText(hintText);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillRect(x - 2, hintY - 12, textMetrics.width + 4, 16);
+        const hintX = x + (maxWidth / 2) - (textMetrics.width / 2); // Центриран
+        const hintY = y + totalHeight + 16; // 16px под text-а
         
-        // Hint text
-        ctx.fillStyle = '#666666';
-        ctx.fillText(hintText, x, hintY);
+        // Semi-transparent background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillRect(hintX - 3, hintY - 11, textMetrics.width + 6, 14);
+        
+        // Hint text - син ако selected, сив ако не
+        ctx.fillStyle = isSelected ? '#0000FF' : '#666666';
+        ctx.fillText(hintText, hintX, hintY);
+        
+        ctx.restore();
       }
     });
 
@@ -306,7 +313,7 @@ export const PDFViewer: React.FC = () => {
       );
       ctx.setLineDash([]);
     }
-  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom]);
+  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom, editingText]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
