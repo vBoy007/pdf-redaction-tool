@@ -147,18 +147,23 @@ export const PDFViewer: React.FC = () => {
       // Това помага на потребителя да разбере че може да click-не
       ctx.save();
       
-      const hintText = '💡 Настройки';
-      ctx.font = '11px Arial';
+      const hintText = '💡 Click за цвят';
+      ctx.font = 'bold 13px Arial'; // Bold и по-голям
       const textMetrics = ctx.measureText(hintText);
       const hintX = x + (width / 2) - (textMetrics.width / 2); // Центриран
-      const hintY = y + height + 16; // 16px под box-а
+      const hintY = y + height + 20; // 20px под box-а
       
-      // Semi-transparent background
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.fillRect(hintX - 3, hintY - 11, textMetrics.width + 6, 14);
+      // Background с border за по-добра видимост
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
       
-      // Hint text - оранжев ако selected, сив ако не
-      ctx.fillStyle = isSelected ? '#FF6B00' : '#666666';
+      // Border
+      ctx.strokeStyle = isSelected ? '#FF6B00' : '#CCCCCC';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
+      
+      // Hint text - оранжев ако selected, тъмносив ако не
+      ctx.fillStyle = isSelected ? '#FF6B00' : '#333333';
       ctx.fillText(hintText, hintX, hintY);
       
       ctx.restore();
@@ -205,18 +210,23 @@ export const PDFViewer: React.FC = () => {
       if (!editingText || editingText.id !== t.id) {
         ctx.save();
         
-        const hintText = '💡 Формат';
-        ctx.font = '11px Arial';
+        const hintText = '💡 Click за формат';
+        ctx.font = 'bold 13px Arial'; // Bold и по-голям
         const textMetrics = ctx.measureText(hintText);
         const hintX = x + (maxWidth / 2) - (textMetrics.width / 2); // Центриран
-        const hintY = y + totalHeight + 16; // 16px под text-а
+        const hintY = y + totalHeight + 20; // 20px под text-а
         
-        // Semi-transparent background
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.fillRect(hintX - 3, hintY - 11, textMetrics.width + 6, 14);
+        // Background с border
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
         
-        // Hint text - син ако selected, сив ако не
-        ctx.fillStyle = isSelected ? '#0000FF' : '#666666';
+        // Border
+        ctx.strokeStyle = isSelected ? '#0000FF' : '#CCCCCC';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
+        
+        // Hint text - син ако selected, тъмносив ако не
+        ctx.fillStyle = isSelected ? '#0000FF' : '#333333';
         ctx.fillText(hintText, hintX, hintY);
         
         ctx.restore();
