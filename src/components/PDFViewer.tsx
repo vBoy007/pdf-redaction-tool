@@ -542,8 +542,8 @@ export const PDFViewer: React.FC = () => {
         }));
       }
     },
-  [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
-);
+    [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
+  );
 
   const handleMouseUp = useCallback(() => {
     // Stop resizing
