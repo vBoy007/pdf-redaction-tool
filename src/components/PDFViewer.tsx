@@ -444,6 +444,18 @@ export const PDFViewer: React.FC = () => {
     if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
       const redaction = redactions.find(r => r.id === draggingAnnotation.id);
       if (redaction) {
+       const handleMouseMove = useCallback(
+  (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!overlayCanvasRef.current) return;
+
+    const rect = overlayCanvasRef.current.getBoundingClientRect();
+    const currentX = (e.clientX - rect.left) / zoom; // Unscale
+    const currentY = (e.clientY - rect.top) / zoom;
+
+    // Handle dragging redaction boxes
+    if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
+      const redaction = redactions.find(r => r.id === draggingAnnotation.id);
+      if (redaction) {
         updateRedaction(redaction.id, {
           x: currentX - draggingAnnotation.offsetX,
           y: currentY - draggingAnnotation.offsetY,
@@ -452,98 +464,94 @@ export const PDFViewer: React.FC = () => {
       return;
     }
 
-      // Handle resizing images
-      if (resizingImage) {
-        const deltaX = currentX - resizingImage.startX;
-        const deltaY = currentY - resizingImage.startY;
+    // Handle resizing images
+    if (resizingImage) {
+      const deltaX = currentX - resizingImage.startX;
+      const deltaY = currentY - resizingImage.startY;
 
-        let newX = resizingImage.originalX;
-        let newY = resizingImage.originalY;
-        let newWidth = resizingImage.originalWidth;
-        let newHeight = resizingImage.originalHeight;
+      let newX = resizingImage.originalX;
+      let newY = resizingImage.originalY;
+      let newWidth = resizingImage.originalWidth;
+      let newHeight = resizingImage.originalHeight;
 
-        const aspectRatio = resizingImage.originalWidth / resizingImage.originalHeight;
+      const aspectRatio = resizingImage.originalWidth / resizingImage.originalHeight;
 
-        switch (resizingImage.handle) {
-          case 'se': // Southeast (bottom-right) - LOCK ASPECT RATIO
-            newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-            newHeight = newWidth / aspectRatio;
-            break;
-          case 'sw': // Southwest (bottom-left) - LOCK ASPECT RATIO
-            newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
-            newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-            newHeight = newWidth / aspectRatio;
-            break;
-          case 'ne': // Northeast (top-right) - LOCK ASPECT RATIO
-            newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-            newHeight = newWidth / aspectRatio;
-            newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-            break;
-          case 'nw': // Northwest (top-left) - LOCK ASPECT RATIO
-            newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
-            newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-            newHeight = newWidth / aspectRatio;
-            newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-            break;
-          case 'e': // East (right) - FREE RESIZE (width only)
-            newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-            // Height stays the same - може да изкриви
-            break;
-          case 'w': // West (left) - FREE RESIZE (width only)
-            newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
-            newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-            // Height stays the same - може да изкриви
-            break;
-          case 's': // South (bottom) - FREE RESIZE (height only)
-            newHeight = Math.max(20, resizingImage.originalHeight + deltaY);
-            // Width stays the same - може да изкриви
-            break;
-          case 'n': // North (top) - FREE RESIZE (height only)
-            newHeight = Math.max(20, resizingImage.originalHeight - deltaY);
-            newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-            // Width stays the same - може да изкриви
-            break;
-        }
-
-        updateImageAnnotation(resizingImage.id, {
-          x: newX,
-          y: newY,
-          width: newWidth,
-          height: newHeight,
-        });
-        return;
+      switch (resizingImage.handle) {
+        case 'se': // Southeast (bottom-right) - LOCK ASPECT RATIO
+          newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
+          newHeight = newWidth / aspectRatio;
+          break;
+        case 'sw': // Southwest (bottom-left) - LOCK ASPECT RATIO
+          newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
+          newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
+          newHeight = newWidth / aspectRatio;
+          break;
+        case 'ne': // Northeast (top-right) - LOCK ASPECT RATIO
+          newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
+          newHeight = newWidth / aspectRatio;
+          newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
+          break;
+        case 'nw': // Northwest (top-left) - LOCK ASPECT RATIO
+          newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
+          newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
+          newHeight = newWidth / aspectRatio;
+          newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
+          break;
+        case 'e': // East (right) - FREE RESIZE (width only)
+          newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
+          break;
+        case 'w': // West (left) - FREE RESIZE (width only)
+          newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
+          newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
+          break;
+        case 's': // South (bottom) - FREE RESIZE (height only)
+          newHeight = Math.max(20, resizingImage.originalHeight + deltaY);
+          break;
+        case 'n': // North (top) - FREE RESIZE (height only)
+          newHeight = Math.max(20, resizingImage.originalHeight - deltaY);
+          newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
+          break;
       }
 
-      // Handle dragging annotations
-      if (draggingAnnotation) {
-        const newX = currentX - draggingAnnotation.offsetX;
-        const newY = currentY - draggingAnnotation.offsetY;
+      updateImageAnnotation(resizingImage.id, {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+      });
+      return;
+    }
 
-        console.log('Dragging annotation:', { id: draggingAnnotation.id, newX, newY });
+    // Handle dragging annotations
+    if (draggingAnnotation) {
+      const newX = currentX - draggingAnnotation.offsetX;
+      const newY = currentY - draggingAnnotation.offsetY;
 
-        if (draggingAnnotation.type === 'text') {
-          updateTextAnnotation(draggingAnnotation.id, { x: newX, y: newY });
-        } else if (draggingAnnotation.type === 'image') {
-          updateImageAnnotation(draggingAnnotation.id, { x: newX, y: newY });
-        }
-        return;
+      console.log('Dragging annotation:', { id: draggingAnnotation.id, newX, newY });
+
+      if (draggingAnnotation.type === 'text') {
+        updateTextAnnotation(draggingAnnotation.id, { x: newX, y: newY });
+      } else if (draggingAnnotation.type === 'image') {
+        updateImageAnnotation(draggingAnnotation.id, { x: newX, y: newY });
       }
+      return;
+    }
 
-      // Handle redaction box drawing
-      if (dragState.isDragging && dragState.startPoint) {
-        const x = Math.min(dragState.startPoint.x, currentX);
-        const y = Math.min(dragState.startPoint.y, currentY);
-        const width = Math.abs(currentX - dragState.startPoint.x);
-        const height = Math.abs(currentY - dragState.startPoint.y);
+    // Handle redaction box drawing
+    if (dragState.isDragging && dragState.startPoint) {
+      const x = Math.min(dragState.startPoint.x, currentX);
+      const y = Math.min(dragState.startPoint.y, currentY);
+      const width = Math.abs(currentX - dragState.startPoint.x);
+      const height = Math.abs(currentY - dragState.startPoint.y);
 
-        setDragState((prev) => ({
-          ...prev,
-          currentBox: { x, y, width, height },
-        }));
-      }
-    },
-    [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
-  );
+      setDragState((prev) => ({
+        ...prev,
+        currentBox: { x, y, width, height },
+      }));
+    }
+  },
+  [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
+);
 
   const handleMouseUp = useCallback(() => {
     // Stop resizing
