@@ -11,23 +11,23 @@ export const PDFViewer: React.FC = () => {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-	const {
-	  file,
-	  currentPage,
-	  zoom,
-	  currentTool,
-	  setCurrentTool,
-	  redactions,
-	  textAnnotations,
-	  imageAnnotations,
-	  addRedaction,
-	  updateRedaction,  // ← ДОБАВИ ТОВА
-	  addTextAnnotation,
-	  addImageAnnotation,
-	  updateTextAnnotation,
-	  updateImageAnnotation,
-	  removeTextAnnotation,
-	} = useDocumentStore();
+  const {
+    file,
+    currentPage,
+    zoom,
+    currentTool,
+    setCurrentTool,
+    redactions,
+    textAnnotations,
+    imageAnnotations,
+    addRedaction,
+    addTextAnnotation,
+    addImageAnnotation,
+    updateTextAnnotation,
+    updateImageAnnotation,
+    updateRedaction,
+    removeTextAnnotation,
+  } = useDocumentStore();
 
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -39,7 +39,7 @@ export const PDFViewer: React.FC = () => {
 
   const [draggingAnnotation, setDraggingAnnotation] = useState<{
     id: string;
-    type: 'text' | 'image';
+    type: 'text' | 'image' | 'redaction';
     startX: number;
     startY: number;
     offsetX: number;
@@ -107,12 +107,12 @@ export const PDFViewer: React.FC = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Get current page items
-    const pageRedactions = redactions.filter((r) => r.pageNumber === currentPage);
-    const pageTexts = textAnnotations.filter((t) => t.pageNumber === currentPage);
-    const pageImages = imageAnnotations.filter((i) => i.pageNumber === currentPage);
+    const pageRedactions = redactions.filter((r: any) => r.pageNumber === currentPage);
+    const pageTexts = textAnnotations.filter((t: any) => t.pageNumber === currentPage);
+    const pageImages = imageAnnotations.filter((i: any) => i.pageNumber === currentPage);
 
     // Draw redactions
-    pageRedactions.forEach((r) => {
+    pageRedactions.forEach((r: any) => {
       // Scale coordinates according to zoom
       const x = r.x * zoom;
       const y = r.y * zoom;
@@ -143,10 +143,35 @@ export const PDFViewer: React.FC = () => {
       ctx.strokeStyle = isSelected ? '#FF6B00' : '#FF0000';
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.strokeRect(x, y, width, height);
+      
+      // Hint text - ВИНАГИ показан (не само когато е selected)
+      // Това помага на потребителя да разбере че може да click-не
+      ctx.save();
+      
+      const hintText = '💡 Click за цвят';
+      ctx.font = 'bold 13px Arial'; // Bold и по-голям
+      const textMetrics = ctx.measureText(hintText);
+      const hintX = x + (width / 2) - (textMetrics.width / 2); // Центриран
+      const hintY = y + height + 20; // 20px под box-а
+      
+      // Background с border за по-добра видимост
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
+      
+      // Border
+      ctx.strokeStyle = isSelected ? '#FF6B00' : '#CCCCCC';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
+      
+      // Hint text - оранжев ако selected, тъмносив ако не
+      ctx.fillStyle = isSelected ? '#FF6B00' : '#333333';
+      ctx.fillText(hintText, hintX, hintY);
+      
+      ctx.restore();
     });
 
     // Draw text annotations
-    pageTexts.forEach((t) => {
+    pageTexts.forEach((t: any) => {
       // Scale coordinates according to zoom
       const x = t.x * zoom;
       const y = t.y * zoom;
@@ -160,7 +185,7 @@ export const PDFViewer: React.FC = () => {
       const lineHeight = fontSize * 1.2; // 20% spacing
       
       let maxWidth = 0;
-      lines.forEach((line, index) => {
+      lines.forEach((line: any, index: any) => {
         if (line.trim() === '') return; // Skip empty lines
         
         const yPos = y + fontSize + (index * lineHeight);
@@ -174,11 +199,39 @@ export const PDFViewer: React.FC = () => {
       // Draw selection box around all lines
       const totalHeight = lines.length * lineHeight;
       const isBeingDragged = draggingAnnotation?.id === t.id && draggingAnnotation?.type === 'text';
+      const isSelected = selectedAnnotation?.id === t.id && selectedAnnotation?.type === 'text';
+      
       ctx.strokeStyle = isBeingDragged ? '#FF6B00' : '#0000FF';
       ctx.lineWidth = isBeingDragged ? 3 : 1;
       ctx.setLineDash([3, 3]);
       ctx.strokeRect(x - 2, y - 2, maxWidth + 4, totalHeight + 4);
       ctx.setLineDash([]);
+      
+      // Hint text - ВИНАГИ показан (освен ако не е в edit mode)
+      if (!editingText || editingText.id !== t.id) {
+        ctx.save();
+        
+        const hintText = '💡 Click за формат';
+        ctx.font = 'bold 13px Arial'; // Bold и по-голям
+        const textMetrics = ctx.measureText(hintText);
+        const hintX = x + (maxWidth / 2) - (textMetrics.width / 2); // Центриран
+        const hintY = y + totalHeight + 20; // 20px под text-а
+        
+        // Background с border
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
+        
+        // Border
+        ctx.strokeStyle = isSelected ? '#0000FF' : '#CCCCCC';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
+        
+        // Hint text - син ако selected, тъмносив ако не
+        ctx.fillStyle = isSelected ? '#0000FF' : '#333333';
+        ctx.fillText(hintText, hintX, hintY);
+        
+        ctx.restore();
+      }
     });
 
     // Draw image annotations
@@ -271,7 +324,7 @@ export const PDFViewer: React.FC = () => {
       );
       ctx.setLineDash([]);
     }
-  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom]);
+  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom, editingText]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
@@ -285,41 +338,38 @@ export const PDFViewer: React.FC = () => {
       console.log('MouseDown:', { x, y, currentTool });
 
       // Check for resize handles on images FIRST
-      const pageImages = imageAnnotations.filter((i) => i.pageNumber === currentPage);
+      const pageImages = imageAnnotations.filter((i: any) => i.pageNumber === currentPage);
       
-	  
-      // Check for redaction boxes (за settings И drag)
-		const pageRedactions = redactions.filter((r) => r.pageNumber === currentPage);
-		for (const redaction of pageRedactions) {
-		  const hitPadding = 5;
-		  if (
-			x >= redaction.x - hitPadding &&
-			x <= redaction.x + redaction.width + hitPadding &&
-			y >= redaction.y - hitPadding &&
-			y <= redaction.y + redaction.height + hitPadding
-		  ) {
-			console.log('Hit redaction box:', redaction.id);
-			
-			// Ако сме в 'select' mode, start dragging
-			if (currentTool === 'select') {
-			  setDraggingAnnotation({
-				id: redaction.id,
-				type: 'redaction',
-				startX: x,
-				startY: y,
-				offsetX: x - redaction.x,
-				offsetY: y - redaction.y,
-			  });
-			}
-			
-			// Затвори ВСИЧКИ други панели и отвори този
-			setSelectedRedactionId(redaction.id);
-			setSelectedAnnotation(null);
-			setShowTemplates(false);
-			setEditingText(null);
-			return;
-		  }
-		}
+      // Check for redaction boxes (за settings)
+      const pageRedactions = redactions.filter((r: any) => r.pageNumber === currentPage);
+      for (const redaction of pageRedactions) {
+        const hitPadding = 5;
+        if (
+          x >= redaction.x - hitPadding &&
+          x <= redaction.x + redaction.width + hitPadding &&
+          y >= redaction.y - hitPadding &&
+          y <= redaction.y + redaction.height + hitPadding
+        ) {
+          console.log('Hit redaction box:', redaction.id);
+          // Ако сме в 'select' mode, start dragging
+          if (currentTool === 'select') {
+            setDraggingAnnotation({
+              id: redaction.id,
+              type: 'redaction',
+              startX: x,
+              startY: y,
+              offsetX: x - redaction.x,
+              offsetY: y - redaction.y,
+            });
+          }
+          // Затвори ВСИЧКИ други панели и отвори този
+          setSelectedRedactionId(redaction.id);
+          setSelectedAnnotation(null);
+          setShowTemplates(false);
+          setEditingText(null);
+          return;
+        }
+      }
       
       for (const img of pageImages) {
         const handleSize = 8;
@@ -359,7 +409,7 @@ export const PDFViewer: React.FC = () => {
       }
 
       // Check text annotations
-      const pageTexts = textAnnotations.filter((t) => t.pageNumber === currentPage);
+      const pageTexts = textAnnotations.filter((t: any) => t.pageNumber === currentPage);
       for (const text of pageTexts) {
         const ctx = overlayCanvasRef.current.getContext('2d');
         if (!ctx) continue;
@@ -371,7 +421,7 @@ export const PDFViewer: React.FC = () => {
         const lineHeight = text.fontSize * 1.2;
         let maxWidth = 0;
         
-        lines.forEach(line => {
+        lines.forEach((line: any) => {
           const metrics = ctx.measureText(line);
           if (metrics.width > maxWidth) maxWidth = metrics.width;
         });
@@ -395,6 +445,9 @@ export const PDFViewer: React.FC = () => {
             offsetY: y - text.y,
           });
           setSelectedAnnotation({ id: text.id, type: 'text' });
+          // Затвори redaction panel
+          setSelectedRedactionId(null);
+          setShowTemplates(false);
           return;
         }
       }
@@ -418,12 +471,18 @@ export const PDFViewer: React.FC = () => {
             offsetY: y - img.y,
           });
           setSelectedAnnotation({ id: img.id, type: 'image' });
+          // Затвори redaction panel
+          setSelectedRedactionId(null);
+          setShowTemplates(false);
           return;
         }
       }
 
-      // Deselect if clicking on empty space
+      // Click на празно място - затвори всички панели
       setSelectedAnnotation(null);
+      setSelectedRedactionId(null);
+      setShowTemplates(false);
+      setEditingText(null);
 
       // Redaction tool (само ако нищо друго не е hit-нато)
       if (currentTool === 'redact') {
@@ -437,121 +496,121 @@ export const PDFViewer: React.FC = () => {
         });
       }
     },
-    [currentTool, currentPage, textAnnotations, imageAnnotations]
+    [currentTool, currentPage, textAnnotations, imageAnnotations, redactions]
   );
 
-   // Handle dragging redaction boxes
-    if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
-      const redaction = redactions.find(r => r.id === draggingAnnotation.id);
-      if (redaction) {
-       const handleMouseMove = useCallback(
-  (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!overlayCanvasRef.current) return;
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!overlayCanvasRef.current) return;
 
-    const rect = overlayCanvasRef.current.getBoundingClientRect();
-    const currentX = (e.clientX - rect.left) / zoom; // Unscale
-    const currentY = (e.clientY - rect.top) / zoom;
+      const rect = overlayCanvasRef.current.getBoundingClientRect();
+      const currentX = (e.clientX - rect.left) / zoom;
+      const currentY = (e.clientY - rect.top) / zoom;
 
-    // Handle dragging redaction boxes
-    if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
-      const redaction = redactions.find(r => r.id === draggingAnnotation.id);
-      if (redaction) {
-        updateRedaction(redaction.id, {
-          x: currentX - draggingAnnotation.offsetX,
-          y: currentY - draggingAnnotation.offsetY,
+      // Handle dragging redaction boxes
+      if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
+        const redaction = redactions.find((r: any) => r.id === draggingAnnotation.id);
+        if (redaction) {
+          updateRedaction(redaction.id, {
+            x: currentX - draggingAnnotation.offsetX,
+            y: currentY - draggingAnnotation.offsetY,
+          });
+        }
+        return;
+      }
+
+      // Handle resizing images
+      if (resizingImage) {
+        const deltaX = currentX - resizingImage.startX;
+        const deltaY = currentY - resizingImage.startY;
+
+        let newX = resizingImage.originalX;
+        let newY = resizingImage.originalY;
+        let newWidth = resizingImage.originalWidth;
+        let newHeight = resizingImage.originalHeight;
+
+        const aspectRatio = resizingImage.originalWidth / resizingImage.originalHeight;
+
+        switch (resizingImage.handle) {
+          case 'se': // Southeast (bottom-right) - LOCK ASPECT RATIO
+            newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
+            newHeight = newWidth / aspectRatio;
+            break;
+          case 'sw': // Southwest (bottom-left) - LOCK ASPECT RATIO
+            newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
+            newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
+            newHeight = newWidth / aspectRatio;
+            break;
+          case 'ne': // Northeast (top-right) - LOCK ASPECT RATIO
+            newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
+            newHeight = newWidth / aspectRatio;
+            newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
+            break;
+          case 'nw': // Northwest (top-left) - LOCK ASPECT RATIO
+            newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
+            newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
+            newHeight = newWidth / aspectRatio;
+            newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
+            break;
+          case 'e': // East (right) - FREE RESIZE (width only)
+            newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
+            // Height stays the same - може да изкриви
+            break;
+          case 'w': // West (left) - FREE RESIZE (width only)
+            newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
+            newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
+            // Height stays the same - може да изкриви
+            break;
+          case 's': // South (bottom) - FREE RESIZE (height only)
+            newHeight = Math.max(20, resizingImage.originalHeight + deltaY);
+            // Width stays the same - може да изкриви
+            break;
+          case 'n': // North (top) - FREE RESIZE (height only)
+            newHeight = Math.max(20, resizingImage.originalHeight - deltaY);
+            newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
+            // Width stays the same - може да изкриви
+            break;
+        }
+
+        updateImageAnnotation(resizingImage.id, {
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
         });
-      }
-      return;
-    }
-
-    // Handle resizing images
-    if (resizingImage) {
-      const deltaX = currentX - resizingImage.startX;
-      const deltaY = currentY - resizingImage.startY;
-
-      let newX = resizingImage.originalX;
-      let newY = resizingImage.originalY;
-      let newWidth = resizingImage.originalWidth;
-      let newHeight = resizingImage.originalHeight;
-
-      const aspectRatio = resizingImage.originalWidth / resizingImage.originalHeight;
-
-      switch (resizingImage.handle) {
-        case 'se': // Southeast (bottom-right) - LOCK ASPECT RATIO
-          newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-          newHeight = newWidth / aspectRatio;
-          break;
-        case 'sw': // Southwest (bottom-left) - LOCK ASPECT RATIO
-          newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
-          newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-          newHeight = newWidth / aspectRatio;
-          break;
-        case 'ne': // Northeast (top-right) - LOCK ASPECT RATIO
-          newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-          newHeight = newWidth / aspectRatio;
-          newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-          break;
-        case 'nw': // Northwest (top-left) - LOCK ASPECT RATIO
-          newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
-          newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-          newHeight = newWidth / aspectRatio;
-          newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-          break;
-        case 'e': // East (right) - FREE RESIZE (width only)
-          newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-          break;
-        case 'w': // West (left) - FREE RESIZE (width only)
-          newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
-          newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-          break;
-        case 's': // South (bottom) - FREE RESIZE (height only)
-          newHeight = Math.max(20, resizingImage.originalHeight + deltaY);
-          break;
-        case 'n': // North (top) - FREE RESIZE (height only)
-          newHeight = Math.max(20, resizingImage.originalHeight - deltaY);
-          newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-          break;
+        return;
       }
 
-      updateImageAnnotation(resizingImage.id, {
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight,
-      });
-      return;
-    }
+      // Handle dragging annotations
+      if (draggingAnnotation) {
+        const newX = currentX - draggingAnnotation.offsetX;
+        const newY = currentY - draggingAnnotation.offsetY;
 
-    // Handle dragging annotations
-    if (draggingAnnotation) {
-      const newX = currentX - draggingAnnotation.offsetX;
-      const newY = currentY - draggingAnnotation.offsetY;
+        console.log('Dragging annotation:', { id: draggingAnnotation.id, newX, newY });
 
-      console.log('Dragging annotation:', { id: draggingAnnotation.id, newX, newY });
-
-      if (draggingAnnotation.type === 'text') {
-        updateTextAnnotation(draggingAnnotation.id, { x: newX, y: newY });
-      } else if (draggingAnnotation.type === 'image') {
-        updateImageAnnotation(draggingAnnotation.id, { x: newX, y: newY });
+        if (draggingAnnotation.type === 'text') {
+          updateTextAnnotation(draggingAnnotation.id, { x: newX, y: newY });
+        } else if (draggingAnnotation.type === 'image') {
+          updateImageAnnotation(draggingAnnotation.id, { x: newX, y: newY });
+        }
+        return;
       }
-      return;
-    }
 
-    // Handle redaction box drawing
-    if (dragState.isDragging && dragState.startPoint) {
-      const x = Math.min(dragState.startPoint.x, currentX);
-      const y = Math.min(dragState.startPoint.y, currentY);
-      const width = Math.abs(currentX - dragState.startPoint.x);
-      const height = Math.abs(currentY - dragState.startPoint.y);
+      // Handle redaction box drawing
+      if (dragState.isDragging && dragState.startPoint) {
+        const x = Math.min(dragState.startPoint.x, currentX);
+        const y = Math.min(dragState.startPoint.y, currentY);
+        const width = Math.abs(currentX - dragState.startPoint.x);
+        const height = Math.abs(currentY - dragState.startPoint.y);
 
-      setDragState((prev) => ({
-        ...prev,
-        currentBox: { x, y, width, height },
-      }));
-    }
-  },
-  [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
-);
+        setDragState((prev: any) => ({
+          ...prev,
+          currentBox: { x, y, width, height },
+        }));
+      }
+    },
+    [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
+  );
 
   const handleMouseUp = useCallback(() => {
     // Stop resizing
@@ -605,7 +664,7 @@ export const PDFViewer: React.FC = () => {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      const pageTexts = textAnnotations.filter((t) => t.pageNumber === currentPage);
+      const pageTexts = textAnnotations.filter((t: any) => t.pageNumber === currentPage);
       for (const text of pageTexts) {
         const ctx = overlayCanvasRef.current.getContext('2d');
         if (!ctx) continue;
@@ -616,7 +675,7 @@ export const PDFViewer: React.FC = () => {
         const lineHeight = text.fontSize * 1.2;
         let maxWidth = 0;
         
-        lines.forEach(line => {
+        lines.forEach((line: any) => {
           const metrics = ctx.measureText(line);
           if (metrics.width > maxWidth) maxWidth = metrics.width;
         });
@@ -688,7 +747,7 @@ export const PDFViewer: React.FC = () => {
       const y = e.clientY - rect.top;
 
       // Check if clicking on existing image
-      const pageImages = imageAnnotations.filter((i) => i.pageNumber === currentPage);
+      const pageImages = imageAnnotations.filter((i: any) => i.pageNumber === currentPage);
       for (const img of pageImages) {
         const hitPadding = 5;
         if (
@@ -793,7 +852,7 @@ export const PDFViewer: React.FC = () => {
 
         {/* Inline Text Editor */}
         {editingText && (() => {
-          const text = textAnnotations.find(t => t.id === editingText.id);
+          const text = textAnnotations.find((t: any) => t.id === editingText.id);
           if (!text || text.pageNumber !== currentPage) return null;
 
           return (
@@ -809,7 +868,7 @@ export const PDFViewer: React.FC = () => {
               <textarea
                 autoFocus
                 value={editingText.value}
-                onChange={(e) => {
+                onChange={(e: any) => {
                   setEditingText({ ...editingText, value: e.target.value });
                   updateTextAnnotation(text.id, { text: e.target.value });
                 }}
@@ -819,7 +878,7 @@ export const PDFViewer: React.FC = () => {
                   }
                   setEditingText(null);
                 }}
-                onKeyDown={(e) => {
+                onKeyDown={(e: any) => {
                   if (e.key === 'Escape') {
                     setEditingText(null);
                   }
