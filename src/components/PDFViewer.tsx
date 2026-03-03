@@ -11,22 +11,23 @@ export const PDFViewer: React.FC = () => {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const {
-    file,
-    currentPage,
-    zoom,
-    currentTool,
-    setCurrentTool,
-    redactions,
-    textAnnotations,
-    imageAnnotations,
-    addRedaction,
-    addTextAnnotation,
-    addImageAnnotation,
-    updateTextAnnotation,
-    updateImageAnnotation,
-    removeTextAnnotation,
-  } = useDocumentStore();
+	const {
+	  file,
+	  currentPage,
+	  zoom,
+	  currentTool,
+	  setCurrentTool,
+	  redactions,
+	  textAnnotations,
+	  imageAnnotations,
+	  addRedaction,
+	  updateRedaction,  // ← ДОБАВИ ТОВА
+	  addTextAnnotation,
+	  addImageAnnotation,
+	  updateTextAnnotation,
+	  updateImageAnnotation,
+	  removeTextAnnotation,
+	} = useDocumentStore();
 
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -142,31 +143,6 @@ export const PDFViewer: React.FC = () => {
       ctx.strokeStyle = isSelected ? '#FF6B00' : '#FF0000';
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.strokeRect(x, y, width, height);
-      
-      // Hint text - ВИНАГИ показан (не само когато е selected)
-      // Това помага на потребителя да разбере че може да click-не
-      ctx.save();
-      
-      const hintText = '💡 Click за цвят';
-      ctx.font = 'bold 13px Arial'; // Bold и по-голям
-      const textMetrics = ctx.measureText(hintText);
-      const hintX = x + (width / 2) - (textMetrics.width / 2); // Центриран
-      const hintY = y + height + 20; // 20px под box-а
-      
-      // Background с border за по-добра видимост
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-      
-      // Border
-      ctx.strokeStyle = isSelected ? '#FF6B00' : '#CCCCCC';
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-      
-      // Hint text - оранжев ако selected, тъмносив ако не
-      ctx.fillStyle = isSelected ? '#FF6B00' : '#333333';
-      ctx.fillText(hintText, hintX, hintY);
-      
-      ctx.restore();
     });
 
     // Draw text annotations
@@ -198,39 +174,11 @@ export const PDFViewer: React.FC = () => {
       // Draw selection box around all lines
       const totalHeight = lines.length * lineHeight;
       const isBeingDragged = draggingAnnotation?.id === t.id && draggingAnnotation?.type === 'text';
-      const isSelected = selectedAnnotation?.id === t.id && selectedAnnotation?.type === 'text';
-      
       ctx.strokeStyle = isBeingDragged ? '#FF6B00' : '#0000FF';
       ctx.lineWidth = isBeingDragged ? 3 : 1;
       ctx.setLineDash([3, 3]);
       ctx.strokeRect(x - 2, y - 2, maxWidth + 4, totalHeight + 4);
       ctx.setLineDash([]);
-      
-      // Hint text - ВИНАГИ показан (освен ако не е в edit mode)
-      if (!editingText || editingText.id !== t.id) {
-        ctx.save();
-        
-        const hintText = '💡 Click за формат';
-        ctx.font = 'bold 13px Arial'; // Bold и по-голям
-        const textMetrics = ctx.measureText(hintText);
-        const hintX = x + (maxWidth / 2) - (textMetrics.width / 2); // Центриран
-        const hintY = y + totalHeight + 20; // 20px под text-а
-        
-        // Background с border
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-        
-        // Border
-        ctx.strokeStyle = isSelected ? '#0000FF' : '#CCCCCC';
-        ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-        
-        // Hint text - син ако selected, тъмносив ако не
-        ctx.fillStyle = isSelected ? '#0000FF' : '#333333';
-        ctx.fillText(hintText, hintX, hintY);
-        
-        ctx.restore();
-      }
     });
 
     // Draw image annotations
@@ -323,7 +271,7 @@ export const PDFViewer: React.FC = () => {
       );
       ctx.setLineDash([]);
     }
-  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom, editingText]);
+  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
@@ -339,25 +287,39 @@ export const PDFViewer: React.FC = () => {
       // Check for resize handles on images FIRST
       const pageImages = imageAnnotations.filter((i) => i.pageNumber === currentPage);
       
-      // Check for redaction boxes (за settings)
-      const pageRedactions = redactions.filter((r) => r.pageNumber === currentPage);
-      for (const redaction of pageRedactions) {
-        const hitPadding = 5;
-        if (
-          x >= redaction.x - hitPadding &&
-          x <= redaction.x + redaction.width + hitPadding &&
-          y >= redaction.y - hitPadding &&
-          y <= redaction.y + redaction.height + hitPadding
-        ) {
-          console.log('Hit redaction box:', redaction.id);
-          // Затвори ВСИЧКИ други панели и отвори този
-          setSelectedRedactionId(redaction.id);
-          setSelectedAnnotation(null);
-          setShowTemplates(false);
-          setEditingText(null);
-          return;
-        }
-      }
+	  
+      // Check for redaction boxes (за settings И drag)
+		const pageRedactions = redactions.filter((r) => r.pageNumber === currentPage);
+		for (const redaction of pageRedactions) {
+		  const hitPadding = 5;
+		  if (
+			x >= redaction.x - hitPadding &&
+			x <= redaction.x + redaction.width + hitPadding &&
+			y >= redaction.y - hitPadding &&
+			y <= redaction.y + redaction.height + hitPadding
+		  ) {
+			console.log('Hit redaction box:', redaction.id);
+			
+			// Ако сме в 'select' mode, start dragging
+			if (currentTool === 'select') {
+			  setDraggingAnnotation({
+				id: redaction.id,
+				type: 'redaction',
+				startX: x,
+				startY: y,
+				offsetX: x - redaction.x,
+				offsetY: y - redaction.y,
+			  });
+			}
+			
+			// Затвори ВСИЧКИ други панели и отвори този
+			setSelectedRedactionId(redaction.id);
+			setSelectedAnnotation(null);
+			setShowTemplates(false);
+			setEditingText(null);
+			return;
+		  }
+		}
       
       for (const img of pageImages) {
         const handleSize = 8;
@@ -433,9 +395,6 @@ export const PDFViewer: React.FC = () => {
             offsetY: y - text.y,
           });
           setSelectedAnnotation({ id: text.id, type: 'text' });
-          // Затвори redaction panel
-          setSelectedRedactionId(null);
-          setShowTemplates(false);
           return;
         }
       }
@@ -459,18 +418,12 @@ export const PDFViewer: React.FC = () => {
             offsetY: y - img.y,
           });
           setSelectedAnnotation({ id: img.id, type: 'image' });
-          // Затвори redaction panel
-          setSelectedRedactionId(null);
-          setShowTemplates(false);
           return;
         }
       }
 
-      // Click на празно място - затвори всички панели
+      // Deselect if clicking on empty space
       setSelectedAnnotation(null);
-      setSelectedRedactionId(null);
-      setShowTemplates(false);
-      setEditingText(null);
 
       // Redaction tool (само ако нищо друго не е hit-нато)
       if (currentTool === 'redact') {
@@ -484,16 +437,20 @@ export const PDFViewer: React.FC = () => {
         });
       }
     },
-    [currentTool, currentPage, textAnnotations, imageAnnotations, redactions]
+    [currentTool, currentPage, textAnnotations, imageAnnotations]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!overlayCanvasRef.current) return;
-
-      const rect = overlayCanvasRef.current.getBoundingClientRect();
-      const currentX = (e.clientX - rect.left) / zoom; // Unscale
-      const currentY = (e.clientY - rect.top) / zoom;
+   // Handle dragging redaction boxes
+    if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
+      const redaction = redactions.find(r => r.id === draggingAnnotation.id);
+      if (redaction) {
+        updateRedaction(redaction.id, {
+          x: currentX - draggingAnnotation.offsetX,
+          y: currentY - draggingAnnotation.offsetY,
+        });
+      }
+      return;
+    }
 
       // Handle resizing images
       if (resizingImage) {
@@ -585,8 +542,8 @@ export const PDFViewer: React.FC = () => {
         }));
       }
     },
-    [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation]
-  );
+  [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
+);
 
   const handleMouseUp = useCallback(() => {
     // Stop resizing
