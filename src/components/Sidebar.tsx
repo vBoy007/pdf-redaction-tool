@@ -87,7 +87,7 @@ export const Sidebar: React.FC = () => {
                   className="flex-1 text-left"
                 >
                   <p className="text-xs font-medium">Страница {t.pageNumber}</p>
-                  <p className="text-xs text-gray-500 truncate">{t.text}</p>
+                  <p className="text-xs text-gray-500">{t.text}</p>
                 </button>
                 <button
                   onClick={() => removeTextAnnotation(t.id)}
