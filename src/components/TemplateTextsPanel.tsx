@@ -49,7 +49,7 @@ export const TemplateTextsPanel: React.FC<TemplateTextsPanelProps> = ({ onSelect
     >
       <div className="flex items-center mb-3">
         <FileText size={16} className="mr-2 text-blue-600" />
-        <h3 className="text-sm font-semibold text-gray-700">Шаблони ЗЗЛД</h3>
+        <h3 className="text-sm font-semibold text-gray-700">Шаблони ЗЗЛД/ЗОП/ДОПК</h3>
       </div>
 
       <div className="space-y-2">
