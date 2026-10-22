@@ -14,7 +14,7 @@ export const TemplateTextsPanel: React.FC<TemplateTextsPanelProps> = ({ onSelect
     },
     {
       title: 'Единствено число',
-      text: 'Подписът е заличен на основание чл. 1, ал. 1 и ал.3 от ЗЗЛД',
+      text: 'Подписът е заличен на основание чл. 1, ал.1 и ал.3 от ЗЗЛД',
       icon: '✍️',
     },
     {
