@@ -29,7 +29,7 @@ export const Sidebar: React.FC = () => {
   }
 
   return (
-    <div className="w-64 bg-gray-50 border-l border-gray-200 p-4 overflow-y-auto">
+    <div className="w-64 bg-gray-50 border-l border-gray-200 p-4 h-full overflow-y-auto">
       <h3 className="text-sm font-semibold text-gray-700 mb-4">
         Промени ({totalItems})
       </h3>
@@ -87,11 +87,11 @@ export const Sidebar: React.FC = () => {
                   className="flex-1 text-left"
                 >
                   <p className="text-xs font-medium">Страница {t.pageNumber}</p>
-                  <p className="text-xs text-gray-500 truncate">{t.text}</p>
+                  <p className="text-xs text-gray-500">{t.text}</p>
                 </button>
                 <button
                   onClick={() => removeTextAnnotation(t.id)}
-                  className="p-1 hover:bg-red-100 rounded"
+                  className="p-1 hover:bg-red-100 rounded shrink-0"
                   title="Изтрий"
                 >
                   <Trash2 size={14} className="text-red-500" />
@@ -126,7 +126,7 @@ export const Sidebar: React.FC = () => {
                 </button>
                 <button
                   onClick={() => removeImageAnnotation(i.id)}
-                  className="p-1 hover:bg-red-100 rounded"
+                  className="p-1 hover:bg-red-100 rounded shrink-0"
                   title="Изтрий"
                 >
                   <Trash2 size={14} className="text-red-500" />

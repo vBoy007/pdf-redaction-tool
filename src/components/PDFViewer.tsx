@@ -69,6 +69,15 @@ export const PDFViewer: React.FC = () => {
 
   const [showTemplates, setShowTemplates] = useState(false);
   const [selectedRedactionId, setSelectedRedactionId] = useState<string | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<{
+    type: 'redaction' | 'text';
+    id: string;
+    text: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Render PDF page to background canvas
   useEffect(() => {
@@ -138,36 +147,12 @@ export const PDFViewer: React.FC = () => {
       ctx.fillStyle = fillColor;
       ctx.fillRect(x, y, width, height);
       
-      // Highlight if selected
+      // Highlight if selected or hovered
       const isSelected = selectedRedactionId === r.id;
-      ctx.strokeStyle = isSelected ? '#FF6B00' : '#FF0000';
-      ctx.lineWidth = isSelected ? 3 : 2;
+      const isHovered = hoveredItem?.type === 'redaction' && hoveredItem.id === r.id;
+      ctx.strokeStyle = isSelected ? '#FF6B00' : isHovered ? '#FF6B00' : '#FF0000';
+      ctx.lineWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
       ctx.strokeRect(x, y, width, height);
-      
-      // Hint text - ВИНАГИ показан (не само когато е selected)
-      // Това помага на потребителя да разбере че може да click-не
-      ctx.save();
-      
-      const hintText = '💡 Click за цвят';
-      ctx.font = 'bold 13px Arial'; // Bold и по-голям
-      const textMetrics = ctx.measureText(hintText);
-      const hintX = x + (width / 2) - (textMetrics.width / 2); // Центриран
-      const hintY = y + height + 20; // 20px под box-а
-      
-      // Background с border за по-добра видимост
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-      
-      // Border
-      ctx.strokeStyle = isSelected ? '#FF6B00' : '#CCCCCC';
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-      
-      // Hint text - оранжев ако selected, тъмносив ако не
-      ctx.fillStyle = isSelected ? '#FF6B00' : '#333333';
-      ctx.fillText(hintText, hintX, hintY);
-      
-      ctx.restore();
     });
 
     // Draw text annotations
@@ -200,38 +185,13 @@ export const PDFViewer: React.FC = () => {
       const totalHeight = lines.length * lineHeight;
       const isBeingDragged = draggingAnnotation?.id === t.id && draggingAnnotation?.type === 'text';
       const isSelected = selectedAnnotation?.id === t.id && selectedAnnotation?.type === 'text';
+      const isHovered = hoveredItem?.type === 'text' && hoveredItem.id === t.id;
       
-      ctx.strokeStyle = isBeingDragged ? '#FF6B00' : '#0000FF';
-      ctx.lineWidth = isBeingDragged ? 3 : 1;
+      ctx.strokeStyle = isBeingDragged ? '#FF6B00' : isSelected ? '#0000FF' : isHovered ? '#2563EB' : '#0000FF';
+      ctx.lineWidth = isBeingDragged ? 3 : isSelected ? 2 : isHovered ? 2 : 1;
       ctx.setLineDash([3, 3]);
       ctx.strokeRect(x - 2, y - 2, maxWidth + 4, totalHeight + 4);
       ctx.setLineDash([]);
-      
-      // Hint text - ВИНАГИ показан (освен ако не е в edit mode)
-      if (!editingText || editingText.id !== t.id) {
-        ctx.save();
-        
-        const hintText = '💡 Click за формат';
-        ctx.font = 'bold 13px Arial'; // Bold и по-голям
-        const textMetrics = ctx.measureText(hintText);
-        const hintX = x + (maxWidth / 2) - (textMetrics.width / 2); // Центриран
-        const hintY = y + totalHeight + 20; // 20px под text-а
-        
-        // Background с border
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        ctx.fillRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-        
-        // Border
-        ctx.strokeStyle = isSelected ? '#0000FF' : '#CCCCCC';
-        ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.strokeRect(hintX - 5, hintY - 13, textMetrics.width + 10, 18);
-        
-        // Hint text - син ако selected, тъмносив ако не
-        ctx.fillStyle = isSelected ? '#0000FF' : '#333333';
-        ctx.fillText(hintText, hintX, hintY);
-        
-        ctx.restore();
-      }
     });
 
     // Draw image annotations
@@ -324,7 +284,7 @@ export const PDFViewer: React.FC = () => {
       );
       ctx.setLineDash([]);
     }
-  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom, editingText]);
+  }, [redactions, textAnnotations, imageAnnotations, currentPage, dragState, draggingAnnotation, resizingImage, selectedAnnotation, selectedRedactionId, zoom, editingText, hoveredItem?.id, hoveredItem?.type]);
 
   // Mouse handlers
   const handleMouseDown = useCallback(
@@ -336,41 +296,10 @@ export const PDFViewer: React.FC = () => {
       const y = (e.clientY - rect.top) / zoom;
 
       console.log('MouseDown:', { x, y, currentTool });
+      setHoveredItem(null);
 
       // Check for resize handles on images FIRST
       const pageImages = imageAnnotations.filter((i: any) => i.pageNumber === currentPage);
-      
-      // Check for redaction boxes (за settings)
-      const pageRedactions = redactions.filter((r: any) => r.pageNumber === currentPage);
-      for (const redaction of pageRedactions) {
-        const hitPadding = 5;
-        if (
-          x >= redaction.x - hitPadding &&
-          x <= redaction.x + redaction.width + hitPadding &&
-          y >= redaction.y - hitPadding &&
-          y <= redaction.y + redaction.height + hitPadding
-        ) {
-          console.log('Hit redaction box:', redaction.id);
-          // Ако сме в 'select' mode, start dragging
-          if (currentTool === 'select') {
-            setDraggingAnnotation({
-              id: redaction.id,
-              type: 'redaction',
-              startX: x,
-              startY: y,
-              offsetX: x - redaction.x,
-              offsetY: y - redaction.y,
-            });
-          }
-          // Затвори ВСИЧКИ други панели и отвори този
-          setSelectedRedactionId(redaction.id);
-          setSelectedAnnotation(null);
-          setShowTemplates(false);
-          setEditingText(null);
-          return;
-        }
-      }
-      
       for (const img of pageImages) {
         const handleSize = 8;
         const handles = [
@@ -408,9 +337,10 @@ export const PDFViewer: React.FC = () => {
         }
       }
 
-      // Check text annotations
+      // Check text annotations (check before redactions so text over redaction can be selected)
       const pageTexts = textAnnotations.filter((t: any) => t.pageNumber === currentPage);
-      for (const text of pageTexts) {
+      for (let i = pageTexts.length - 1; i >= 0; i--) {
+        const text = pageTexts[i];
         const ctx = overlayCanvasRef.current.getContext('2d');
         if (!ctx) continue;
         
@@ -478,6 +408,38 @@ export const PDFViewer: React.FC = () => {
         }
       }
 
+      // Check for redaction boxes (за settings & dragging)
+      const pageRedactions = redactions.filter((r: any) => r.pageNumber === currentPage);
+      for (let i = pageRedactions.length - 1; i >= 0; i--) {
+        const redaction = pageRedactions[i];
+        const hitPadding = 5;
+        if (
+          x >= redaction.x - hitPadding &&
+          x <= redaction.x + redaction.width + hitPadding &&
+          y >= redaction.y - hitPadding &&
+          y <= redaction.y + redaction.height + hitPadding
+        ) {
+          console.log('Hit redaction box:', redaction.id);
+          // Ако сме в 'select' mode, start dragging
+          if (currentTool === 'select') {
+            setDraggingAnnotation({
+              id: redaction.id,
+              type: 'redaction',
+              startX: x,
+              startY: y,
+              offsetX: x - redaction.x,
+              offsetY: y - redaction.y,
+            });
+          }
+          // Затвори ВСИЧКИ други панели и отвори този
+          setSelectedRedactionId(redaction.id);
+          setSelectedAnnotation(null);
+          setShowTemplates(false);
+          setEditingText(null);
+          return;
+        }
+      }
+
       // Click на празно място - затвори всички панели
       setSelectedAnnotation(null);
       setSelectedRedactionId(null);
@@ -496,7 +458,7 @@ export const PDFViewer: React.FC = () => {
         });
       }
     },
-    [currentTool, currentPage, textAnnotations, imageAnnotations, redactions]
+    [currentTool, currentPage, textAnnotations, imageAnnotations, redactions, zoom]
   );
 
   const handleMouseMove = useCallback(
@@ -509,6 +471,7 @@ export const PDFViewer: React.FC = () => {
 
       // Handle dragging redaction boxes
       if (draggingAnnotation && draggingAnnotation.type === 'redaction') {
+        if (hoveredItem) setHoveredItem(null);
         const redaction = redactions.find((r: any) => r.id === draggingAnnotation.id);
         if (redaction) {
           updateRedaction(redaction.id, {
@@ -521,6 +484,7 @@ export const PDFViewer: React.FC = () => {
 
       // Handle resizing images
       if (resizingImage) {
+        if (hoveredItem) setHoveredItem(null);
         const deltaX = currentX - resizingImage.startX;
         const deltaY = currentY - resizingImage.startY;
 
@@ -554,21 +518,17 @@ export const PDFViewer: React.FC = () => {
             break;
           case 'e': // East (right) - FREE RESIZE (width only)
             newWidth = Math.max(20, resizingImage.originalWidth + deltaX);
-            // Height stays the same - може да изкриви
             break;
           case 'w': // West (left) - FREE RESIZE (width only)
             newWidth = Math.max(20, resizingImage.originalWidth - deltaX);
             newX = resizingImage.originalX + resizingImage.originalWidth - newWidth;
-            // Height stays the same - може да изкриви
             break;
           case 's': // South (bottom) - FREE RESIZE (height only)
             newHeight = Math.max(20, resizingImage.originalHeight + deltaY);
-            // Width stays the same - може да изкриви
             break;
           case 'n': // North (top) - FREE RESIZE (height only)
             newHeight = Math.max(20, resizingImage.originalHeight - deltaY);
             newY = resizingImage.originalY + resizingImage.originalHeight - newHeight;
-            // Width stays the same - може да изкриви
             break;
         }
 
@@ -583,6 +543,7 @@ export const PDFViewer: React.FC = () => {
 
       // Handle dragging annotations
       if (draggingAnnotation) {
+        if (hoveredItem) setHoveredItem(null);
         const newX = currentX - draggingAnnotation.offsetX;
         const newY = currentY - draggingAnnotation.offsetY;
 
@@ -598,6 +559,7 @@ export const PDFViewer: React.FC = () => {
 
       // Handle redaction box drawing
       if (dragState.isDragging && dragState.startPoint) {
+        if (hoveredItem) setHoveredItem(null);
         const x = Math.min(dragState.startPoint.x, currentX);
         const y = Math.min(dragState.startPoint.y, currentY);
         const width = Math.abs(currentX - dragState.startPoint.x);
@@ -607,9 +569,131 @@ export const PDFViewer: React.FC = () => {
           ...prev,
           currentBox: { x, y, width, height },
         }));
+        return;
       }
+
+      // Hover check for comment / hint when idle
+      const mouseCanvasX = e.clientX - rect.left;
+      const mouseCanvasY = e.clientY - rect.top;
+
+      let foundHover: {
+        type: 'redaction' | 'text';
+        id: string;
+        text: string;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      } | null = null;
+
+      // 1. Check text annotations first (on top)
+      const pageTexts = textAnnotations.filter((t: any) => t.pageNumber === currentPage);
+      for (let i = pageTexts.length - 1; i >= 0; i--) {
+        const text = pageTexts[i];
+        if (editingText && editingText.id === text.id) continue;
+        if (selectedAnnotation?.type === 'text' && selectedAnnotation?.id === text.id) continue;
+
+        const ctx = overlayCanvasRef.current.getContext('2d');
+        if (!ctx) continue;
+
+        ctx.font = `${text.bold ? 'bold' : 'normal'} ${text.fontSize * zoom}px Arial`;
+        const lines = text.text.split('\n');
+        const lineHeight = text.fontSize * 1.2 * zoom;
+        let maxWidth = 0;
+        lines.forEach((line: any) => {
+          const metrics = ctx.measureText(line);
+          if (metrics.width > maxWidth) maxWidth = metrics.width;
+        });
+        const totalHeight = lines.length * lineHeight;
+
+        const tx = text.x * zoom;
+        const ty = text.y * zoom;
+        const hitPadding = 4;
+
+        if (
+          mouseCanvasX >= tx - hitPadding &&
+          mouseCanvasX <= tx + maxWidth + hitPadding &&
+          mouseCanvasY >= ty - hitPadding &&
+          mouseCanvasY <= ty + totalHeight + hitPadding
+        ) {
+          foundHover = {
+            type: 'text',
+            id: text.id,
+            text: '💡 Click за формат',
+            x: tx,
+            y: ty,
+            width: maxWidth,
+            height: totalHeight,
+          };
+          break;
+        }
+      }
+
+      // 2. Check redaction boxes if no text hovered
+      if (!foundHover) {
+        const pageRedactions = redactions.filter((r: any) => r.pageNumber === currentPage);
+        for (let i = pageRedactions.length - 1; i >= 0; i--) {
+          const redaction = pageRedactions[i];
+          if (selectedRedactionId === redaction.id) continue;
+
+          const rx = redaction.x * zoom;
+          const ry = redaction.y * zoom;
+          const rw = redaction.width * zoom;
+          const rh = redaction.height * zoom;
+          const hitPadding = 4;
+
+          if (
+            mouseCanvasX >= rx - hitPadding &&
+            mouseCanvasX <= rx + rw + hitPadding &&
+            mouseCanvasY >= ry - hitPadding &&
+            mouseCanvasY <= ry + rh + hitPadding
+          ) {
+            foundHover = {
+              type: 'redaction',
+              id: redaction.id,
+              text: '💡 Click за цвят',
+              x: rx,
+              y: ry,
+              width: rw,
+              height: rh,
+            };
+            break;
+          }
+        }
+      }
+
+      setHoveredItem((prev) => {
+        if (!prev && !foundHover) return null;
+        if (prev && foundHover && prev.id === foundHover.id && prev.type === foundHover.type) {
+          if (
+            Math.abs(prev.x - foundHover.x) < 1 &&
+            Math.abs(prev.y - foundHover.y) < 1 &&
+            Math.abs(prev.width - foundHover.width) < 1 &&
+            Math.abs(prev.height - foundHover.height) < 1
+          ) {
+            return prev;
+          }
+        }
+        return foundHover;
+      });
     },
-    [dragState, draggingAnnotation, resizingImage, updateTextAnnotation, updateImageAnnotation, redactions, updateRedaction, zoom]
+    [
+      draggingAnnotation,
+      resizingImage,
+      dragState.isDragging,
+      dragState.startPoint,
+      zoom,
+      redactions,
+      updateRedaction,
+      updateTextAnnotation,
+      updateImageAnnotation,
+      textAnnotations,
+      currentPage,
+      editingText,
+      selectedAnnotation,
+      selectedRedactionId,
+      hoveredItem,
+    ]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -835,11 +919,18 @@ export const PDFViewer: React.FC = () => {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onMouseLeave={() => setHoveredItem(null)}
           onClick={handleClick}
           className="absolute top-0 left-0"
           style={{
             cursor: draggingAnnotation
               ? 'grabbing'
+              : resizingImage
+              ? 'nwse-resize'
+              : dragState.isDragging
+              ? 'crosshair'
+              : hoveredItem
+              ? 'pointer'
               : currentTool === 'redact'
               ? 'crosshair'
               : currentTool === 'text'
@@ -849,6 +940,55 @@ export const PDFViewer: React.FC = () => {
               : 'grab',
           }}
         />
+
+        {/* Hover comment / tooltip for redactions and text */}
+        {hoveredItem && !draggingAnnotation && !resizingImage && !dragState.isDragging && (
+          (() => {
+            const isAbove = hoveredItem.y > 38;
+            const rawTooltipX = hoveredItem.x + hoveredItem.width / 2;
+            const canvasWidth = overlayCanvasRef.current?.width || 800;
+            const clampedX = Math.max(65, Math.min(canvasWidth - 65, rawTooltipX));
+            const arrowOffset = rawTooltipX - clampedX;
+            const tooltipY = isAbove ? hoveredItem.y - 8 : hoveredItem.y + hoveredItem.height + 8;
+            const isRedaction = hoveredItem.type === 'redaction';
+
+            return (
+              <div
+                className="pointer-events-none absolute z-40 select-none transition-all duration-150 ease-out"
+                style={{
+                  left: `${clampedX}px`,
+                  top: `${tooltipY}px`,
+                  transform: isAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+                }}
+              >
+                <div
+                  className={`relative flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md shadow-lg border backdrop-blur-sm ${
+                    isRedaction
+                      ? 'bg-amber-50/95 border-amber-500 text-amber-900'
+                      : 'bg-blue-50/95 border-blue-500 text-blue-900'
+                  }`}
+                >
+                  {/* Arrow indicator */}
+                  <div
+                    className={`absolute left-1/2 w-2 h-2 rotate-45 border ${
+                      isRedaction ? 'bg-amber-50 border-amber-500' : 'bg-blue-50 border-blue-500'
+                    } ${
+                      isAbove
+                        ? '-bottom-1 border-t-0 border-l-0'
+                        : '-top-1 border-b-0 border-r-0'
+                    }`}
+                    style={{
+                      transform: `translateX(calc(-50% + ${Math.max(-40, Math.min(40, arrowOffset))}px))`,
+                    }}
+                  />
+                  <span className="relative z-10 flex items-center gap-1">
+                    {hoveredItem.text}
+                  </span>
+                </div>
+              </div>
+            );
+          })()
+        )}
 
         {/* Inline Text Editor */}
         {editingText && (() => {
